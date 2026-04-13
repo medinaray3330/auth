@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Auth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0c0c0c;
+    --surface: #141414;
+    --border: #222;
+    --border-hover: #333;
+    --text: #e8e8e8;
+    --muted: #666;
+    --accent: #b8f566;
+    --accent-dim: rgba(184,245,102,0.12);
+    --danger: #ff5c5c;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --radius: 6px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; }
+
+  /* --- LOCK SCREEN --- */
+  #lockScreen {
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 2rem;
+  }
+
+  .lock-logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 3rem;
+  }
+
+  .lock-box {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .lock-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    letter-spacing: 0.05em;
+  }
+
+  .pin-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 22px;
+    letter-spacing: 0.3em;
+    padding: 0.9rem 1rem;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-text-security: disc;
+    appearance: none;
+  }
+
+  .pin-input:focus { border-color: var(--accent); }
+
+  .btn-primary {
+    display: block;
+    width: 100%;
+    margin-top: 0.75rem;
+    background: var(--accent);
+    color: #0c0c0c;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 0.85rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:active { opacity: 0.75; }
+
+  .lock-error {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--danger);
+    text-align: center;
+    margin-top: 0.75rem;
+    height: 16px;
+  }
+
+  .lock-hint {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 2rem;
+  }
+
+  /* --- MAIN APP --- */
+  #appScreen {
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 1rem 4rem;
+  }
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 0 1.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+
+  .app-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .btn-lock {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .btn-lock:hover { border-color: var(--border-hover); color: var(--text); }
+
+  /* --- ACCOUNT CARDS --- */
+  .accounts-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .acct-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .acct-card:hover { border-color: var(--border-hover); }
+  .acct-card.copied { border-color: var(--accent); }
+
+  .acct-name {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .acct-code {
+    font-family: var(--mono);
+    font-size: 34px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 0.85rem;
+    transition: color 0.2s;
+  }
+
+  .acct-code.expiring { color: var(--danger); }
+
+  .acct-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .acct-progress {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-right: 1rem;
+  }
+
+  .acct-bar {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 1s linear, background 0.3s;
+  }
+
+  .acct-bar.expiring { background: var(--danger); }
+
+  .acct-secs {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 24px;
+    text-align: right;
+  }
+
+  .acct-delete {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0.4rem;
+    border-radius: 3px;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+    display: none;
+  }
+
+  .acct-card:hover .acct-delete,
+  .acct-card.delete-mode .acct-delete { display: block; }
+  .acct-delete:hover { color: var(--danger); background: rgba(255,92,92,0.1); }
+
+  .copy-flash {
+    position: absolute;
+    bottom: 1.1rem;
+    right: 1.25rem;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+
+  .copy-flash.show { opacity: 1; }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  /* --- ADD ACCOUNT FORM --- */
+  .add-form {
+    margin-top: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+
+  .add-form-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .form-group { margin-bottom: 0.75rem; }
+
+  .form-label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.05em;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 0.65rem 0.85rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted); }
+
+  .form-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+
+  .btn-add {
+    flex: 1;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(184,245,102,0.3);
+    border-radius: var(--radius);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 0.7rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-add:hover { background: rgba(184,245,102,0.2); }
+
+  .btn-cancel {
+    background: none;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+
+  .btn-cancel:hover { color: var(--text); }
+
+  .form-error {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--danger);
+    margin-top: 0.5rem;
+    min-height: 14px;
+  }
+
+  .btn-show-add {
+    display: block;
+    width: 100%;
+    margin-top: 1rem;
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    padding: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .btn-show-add:hover { border-color: var(--border-hover); color: var(--text); }
+
+  /* confirm delete modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 1rem;
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .modal-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    margin-bottom: 0.5rem;
+  }
+
+  .modal-body {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+    line-height: 1.6;
+  }
+
+  .modal-actions { display: flex; gap: 0.5rem; }
+
+  .btn-danger {
+    flex: 1;
+    background: rgba(255,92,92,0.12);
+    color: var(--danger);
+    border: 1px solid rgba(255,92,92,0.3);
+    border-radius: var(--radius);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 0.7rem;
+    cursor: pointer;
+  }
+
+  .btn-danger:hover { background: rgba(255,92,92,0.2); }
+
+  @media (max-width: 400px) {
+    .acct-code { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lockScreen" class="screen active">
+  <div class="lock-logo">AUTH</div>
+  <div class="lock-box">
+    <p class="lock-title" id="lockTitle">enter pin</p>
+    <input class="pin-input" id="pinInput" type="tel" maxlength="8" placeholder="••••" inputmode="numeric" autocomplete="off" />
+    <button class="btn-primary" id="pinBtn">Unlock</button>
+    <p class="lock-error" id="lockError"></p>
+    <p class="lock-hint" id="lockHint"></p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appScreen" class="screen">
+  <div class="app-header">
+    <span class="app-title">Authenticator</span>
+    <button class="btn-lock" onclick="lockApp()">Lock</button>
+  </div>
+  <div class="accounts-list" id="accountsList"></div>
+  <button class="btn-show-add" id="showAddBtn" onclick="showAddForm()">+ add account</button>
+  <div class="add-form" id="addForm" style="display:none;">
+    <p class="add-form-title">New account</p>
+    <div class="form-group">
+      <label class="form-label" for="acctName">Name</label>
+      <input class="form-input" id="acctName" type="text" placeholder="e.g. GoLogin" autocomplete="off" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="acctSecret">Secret key</label>
+      <input class="form-input" id="acctSecret" type="text" placeholder="JBSWY3DPEHPK3PXP" autocomplete="off" spellcheck="false" style="letter-spacing:0.05em;" />
+    </div>
+    <p class="form-error" id="addError"></p>
+    <div class="form-actions">
+      <button class="btn-add" onclick="addAccount()">Save account</button>
+      <button class="btn-cancel" onclick="hideAddForm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <p class="modal-title">Remove account?</p>
+    <p class="modal-body" id="deleteModalBody">This will delete the account and you won't be able to recover the secret key from here.</p>
+    <div class="modal-actions">
+      <button class="btn-danger" id="confirmDeleteBtn">Remove</button>
+      <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── TOTP ─────────────────────────────────────────── */
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function b32decode(s) {
+  s = s.toUpperCase().replace(/[\s=\-_]/g, '');
+  let bits = 0, val = 0, idx = 0;
+  const out = new Uint8Array(Math.floor(s.length * 5 / 8));
+  for (let i = 0; i < s.length; i++) {
+    const c = B32.indexOf(s[i]);
+    if (c < 0) continue;
+    val = (val << 5) | c;
+    bits += 5;
+    if (bits >= 8) { out[idx++] = (val >>> (bits - 8)) & 0xff; bits -= 8; }
+  }
+  return out.slice(0, idx);
+}
+
+async function totp(secret) {
+  const key = b32decode(secret);
+  if (key.length < 10) throw new Error('invalid');
+  const step = Math.floor(Date.now() / 1000 / 30);
+  const buf = new ArrayBuffer(8);
+  new DataView(buf).setUint32(4, step, false);
+  const ck = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', ck, buf));
+  const off = sig[sig.length - 1] & 0xf;
+  const code = (((sig[off] & 0x7f) << 24) | (sig[off+1] << 16) | (sig[off+2] << 8) | sig[off+3]) % 1000000;
+  return code.toString().padStart(6, '0');
+}
+
+/* ─── CRYPTO (PIN-based AES-GCM) ───────────────────── */
+async function deriveKey(pin, salt) {
+  const m = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' },
+    m, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+  );
+}
+
+async function encrypt(key, data) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(data)));
+  return btoa(JSON.stringify({ iv: [...iv], ct: [...new Uint8Array(ct)] }));
+}
+
+async function decrypt(key, blob) {
+  const { iv, ct } = JSON.parse(atob(blob));
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(iv) }, key, new Uint8Array(ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* ─── STATE ─────────────────────────────────────────── */
+let aesKey = null;
+let accounts = [];
+let tickInterval = null;
+let deleteTarget = null;
+
+const SALT_KEY = 'auth_salt';
+const DATA_KEY = 'auth_data';
+const VER_KEY  = 'auth_ver';
+
+function getSalt() {
+  let s = localStorage.getItem(SALT_KEY);
+  if (s) return new Uint8Array(JSON.parse(s));
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  localStorage.setItem(SALT_KEY, JSON.stringify([...salt]));
+  return salt;
+}
+
+function isSetup() { return !!localStorage.getItem(DATA_KEY); }
+
+/* ─── LOCK SCREEN ───────────────────────────────────── */
+const lockScreen = document.getElementById('lockScreen');
+const appScreen  = document.getElementById('appScreen');
+const pinInput   = document.getElementById('pinInput');
+const pinBtn     = document.getElementById('pinBtn');
+const lockTitle  = document.getElementById('lockTitle');
+const lockError  = document.getElementById('lockError');
+const lockHint   = document.getElementById('lockHint');
+
+let setupMode = false;
+let setupPin  = '';
+
+function initLockScreen() {
+  if (!isSetup()) {
+    setupMode = true;
+    lockTitle.textContent = 'create a pin';
+    lockHint.textContent  = 'You\'ll use this every time you open the app';
+    pinBtn.textContent    = 'Set PIN';
+  } else {
+    setupMode = false;
+    lockTitle.textContent = 'enter pin';
+    lockHint.textContent  = '';
+    pinBtn.textContent    = 'Unlock';
+  }
+  pinInput.value = '';
+  lockError.textContent = '';
+}
+
+pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') pinBtn.click(); });
+pinInput.addEventListener('input', () => { lockError.textContent = ''; });
+
+pinBtn.addEventListener('click', async () => {
+  const pin = pinInput.value.trim();
+  if (pin.length < 4) { lockError.textContent = 'PIN must be at least 4 digits'; return; }
+
+  if (setupMode) {
+    if (!setupPin) {
+      setupPin = pin;
+      lockTitle.textContent = 'confirm pin';
+      pinInput.value = '';
+      return;
+    }
+    if (pin !== setupPin) {
+      lockError.textContent = 'PINs do not match — try again';
+      setupPin = '';
+      lockTitle.textContent = 'create a pin';
+      pinInput.value = '';
+      return;
+    }
+    try {
+      aesKey = await deriveKey(pin, getSalt());
+      const blob = await encrypt(aesKey, []);
+      localStorage.setItem(DATA_KEY, blob);
+      localStorage.setItem(VER_KEY, '1');
+      accounts = [];
+      enterApp();
+    } catch(e) { lockError.textContent = 'Setup failed — refresh and try again'; }
+  } else {
+    try {
+      const key = await deriveKey(pin, getSalt());
+      const blob = localStorage.getItem(DATA_KEY);
+      const data = await decrypt(key, blob);
+      aesKey = key;
+      accounts = data;
+      enterApp();
+    } catch(e) { lockError.textContent = 'Wrong PIN'; pinInput.value = ''; }
+  }
+});
+
+function enterApp() {
+  lockScreen.classList.remove('active');
+  appScreen.classList.add('active');
+  renderAccounts();
+  startTick();
+}
+
+function lockApp() {
+  stopTick();
+  aesKey = null;
+  appScreen.classList.remove('active');
+  lockScreen.classList.add('active');
+  setupPin = '';
+  initLockScreen();
+}
+
+/* ─── SAVE ──────────────────────────────────────────── */
+async function save() {
+  const blob = await encrypt(aesKey, accounts);
+  localStorage.setItem(DATA_KEY, blob);
+}
+
+/* ─── ADD ACCOUNT ───────────────────────────────────── */
+function showAddForm() {
+  document.getElementById('addForm').style.display = 'block';
+  document.getElementById('showAddBtn').style.display = 'none';
+  document.getElementById('acctName').focus();
+}
+
+function hideAddForm() {
+  document.getElementById('addForm').style.display = 'none';
+  document.getElementById('showAddBtn').style.display = 'block';
+  document.getElementById('acctName').value = '';
+  document.getElementById('acctSecret').value = '';
+  document.getElementById('addError').textContent = '';
+}
+
+async function addAccount() {
+  const name   = document.getElementById('acctName').value.trim();
+  const secret = document.getElementById('acctSecret').value.trim().replace(/\s/g,'');
+  const errEl  = document.getElementById('addError');
+
+  if (!name)   { errEl.textContent = 'Name is required'; return; }
+  if (!secret) { errEl.textContent = 'Secret key is required'; return; }
+
+  try {
+    await totp(secret);
+  } catch(e) {
+    errEl.textContent = 'Invalid secret key — check for typos';
+    return;
+  }
+
+  accounts.push({ id: Date.now(), name, secret });
+  await save();
+  hideAddForm();
+  renderAccounts();
+}
+
+/* ─── DELETE ────────────────────────────────────────── */
+const deleteModal   = document.getElementById('deleteModal');
+const deleteBody    = document.getElementById('deleteModalBody');
+const confirmDelBtn = document.getElementById('confirmDeleteBtn');
+
+function openDeleteModal(id, name) {
+  deleteTarget = id;
+  deleteBody.textContent = `Remove "${name}"? You can't recover the secret key from here.`;
+  deleteModal.classList.add('active');
+  confirmDelBtn.onclick = async () => {
+    accounts = accounts.filter(a => a.id !== deleteTarget);
+    await save();
+    closeDeleteModal();
+    renderAccounts();
+  };
+}
+
+function closeDeleteModal() {
+  deleteModal.classList.remove('active');
+  deleteTarget = null;
+}
+
+/* ─── RENDER ────────────────────────────────────────── */
+const listEl = document.getElementById('accountsList');
+
+function secsLeft()    { return 30 - (Math.floor(Date.now() / 1000) % 30); }
+function barPct()      { return (secsLeft() / 30) * 100; }
+function isExpiring()  { return secsLeft() <= 7; }
+
+function formatCode(c) { return c.slice(0, 3) + ' ' + c.slice(3); }
+
+async function renderAccounts() {
+  listEl.innerHTML = '';
+
+  if (accounts.length === 0) {
+    listEl.innerHTML = '<div class="empty-state">No accounts yet.<br>Add your first one below.</div>';
+    return;
+  }
+
+  for (const acct of accounts) {
+    let code = '------';
+    try { code = await totp(acct.secret); } catch(e) {}
+
+    const card = document.createElement('div');
+    card.className = 'acct-card';
+    card.dataset.id = acct.id;
+
+    card.innerHTML = `
+      <button class="acct-delete" title="Remove" onclick="event.stopPropagation();openDeleteModal(${acct.id},'${acct.name.replace(/'/g,"\\'")}')">✕</button>
+      <div class="acct-name">${acct.name}</div>
+      <div class="acct-code${isExpiring() ? ' expiring' : ''}" id="code-${acct.id}">${formatCode(code)}</div>
+      <div class="acct-footer">
+        <div class="acct-progress"><div class="acct-bar${isExpiring() ? ' expiring' : ''}" id="bar-${acct.id}" style="width:${barPct()}%"></div></div>
+        <span class="acct-secs" id="secs-${acct.id}">${secsLeft()}s</span>
+      </div>
+      <span class="copy-flash" id="flash-${acct.id}">copied</span>
+    `;
+
+    card.addEventListener('click', () => copyCode(acct.id, code));
+    listEl.appendChild(card);
+  }
+}
+
+async function copyCode(id, code) {
+  try { await navigator.clipboard.writeText(code.replace(/\s/g, '')); } catch(e) {}
+  const card  = document.querySelector(`[data-id="${id}"]`);
+  const flash = document.getElementById(`flash-${id}`);
+  if (card)  { card.classList.add('copied'); setTimeout(() => card.classList.remove('copied'), 1200); }
+  if (flash) { flash.classList.add('show');  setTimeout(() => flash.classList.remove('show'), 1200); }
+}
+
+/* ─── TICK ──────────────────────────────────────────── */
+let lastStep = -1;
+
+function tick() {
+  const secs = secsLeft();
+  const step = Math.floor(Date.now() / 1000 / 30);
+  const exp  = isExpiring();
+  const pct  = barPct();
+
+  if (step !== lastStep) {
+    lastStep = step;
+    accounts.forEach(async acct => {
+      const el = document.getElementById(`code-${acct.id}`);
+      if (!el) return;
+      try {
+        const c = await totp(acct.secret);
+        el.textContent = formatCode(c);
+      } catch(e) {}
+    });
+  }
+
+  accounts.forEach(acct => {
+    const bar  = document.getElementById(`bar-${acct.id}`);
+    const secsEl = document.getElementById(`secs-${acct.id}`);
+    const codeEl = document.getElementById(`code-${acct.id}`);
+    if (bar)    { bar.style.width = pct + '%'; bar.classList.toggle('expiring', exp); }
+    if (secsEl) { secsEl.textContent = secs + 's'; }
+    if (codeEl) { codeEl.classList.toggle('expiring', exp); }
+  });
+}
+
+function startTick() { tickInterval = setInterval(tick, 1000); }
+function stopTick()  { clearInterval(tickInterval); }
+
+/* ─── INIT ──────────────────────────────────────────── */
+initLockScreen();
+</script>
+</body>
+</html>
